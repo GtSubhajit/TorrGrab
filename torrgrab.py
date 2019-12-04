@@ -83,7 +83,6 @@ def piratebay(term):
 
 def torrentz(term):
 	global name,link
-	term=term.replace(' ','+')
 	pblnk="https://torrentz2eu.in"
 	print('\n\n[i] Please Wait Searching Data...')
 	term=urllib.parse.quote_plus(term.strip())
@@ -133,7 +132,21 @@ def mag2tor(name,hash):
 	except:
 		print("\n\n\n[!] You Need To use A VPN To Fetch Torrent...")
 		return False
-
+print('\tChecking For Updates...')
+ver = urllib.request.urlopen("https://raw.githubusercontent.com/TheSpeedX/TorrGrab/master/.version").read().decode('utf-8')
+verl = ''
+try:
+    verl = open(".version", 'r').read()
+except Exception:
+    pass
+if ver != verl:
+    print('\n\t\tAn Update is Available....')
+    print('\tStarting Update...')
+    urllib.request.urlretrieve('https://raw.githubusercontent.com/TheSpeedX/TorrGrab/master/torrgrab.py', 'torrgrab.py')
+	print("Your Version is Updated")
+	print("Exiting TorrGrab!!! Run it Again...")
+else:
+	print("Your Version is Up-To-Date")
 if len(sys.argv)==2:
 	if "u" in sys.argv[1]:
 		print('\n\nUpdating TorrGrab...')
@@ -146,12 +159,9 @@ se=''
 
 cho=input("Choose Engine [ 1 - 2 ]: ")
 
-term=input("[?] Enter What to search: ")
+term=input("[?] Enter What to search: ").replace(' ','+')
 if "1" in cho:
 	se='piratebay'
-	while " " in term:
-		print('Spaces Are Not Allowed In Searches \n You Can use WildCards.')
-		term=input("[?] Enter What to search: ")
 	piratebay(term)
 elif "2" in cho:
 	se='torrentz'
