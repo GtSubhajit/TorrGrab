@@ -1,5 +1,6 @@
 import urllib.request,urllib.parse
 import os, sys, subprocess
+import requests
 
 banner = """
   ______                ______           __
@@ -17,76 +18,72 @@ hdr = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML,
        'Accept-Encoding': 'none',
        'Accept-Language': 'en-US,en;q=0.8',
        'Connection': 'keep-alive'}
+
+request=requests.session()
 name=[]
 link=[]
-def scrapmagnet(site,se="pirate"):
-    if "pirate" in se.lower():
-        req = urllib.request.Request(site, headers=hdr)
-        try:
-            page = urllib.request.urlopen(req)
-        except:
-            pass
-        page=page.read().decode('utf-8')
-        p1=page.find('<dt>Info Hash:</dt><dd></dd>')+32
-        p2=page.find('</dl',p1)
-        print("Hash: ",page[p1:p2].strip())
-        p1=page.find('href="magnet:?')+6
-        p2=page.find('" title',p1)
-        mglink=page[p1:p2].strip()
-        return mglink
-    else:
-        return site
+data=[]
+trackers=[
+"udp://tracker.coppersurfer.tk:6969/announce",
+"udp://9.rarbg.to:2920/announce",
+"udp://tracker.opentrackr.org:1337",
+"udp://tracker.internetwarriors.net:1337/announce",
+"udp://tracker.leechers-paradise.org:6969/announce",
+"udp://tracker.coppersurfer.tk:6969/announce",
+"udp://tracker.pirateparty.gr:6969/announce",
+"udp://tracker.cyberia.is:6969/announce"]
+def scrapmagnet(hash,name):
+    prefix="magnet:?xt=urn:btih:"
+    dn="dn="+urllib.parse.quote(name,safe='')
+    tr=[ "tr="+urllib.parse.quote(t,safe='') for t in trackers]
+    tr="&".join(tr)
+    return prefix+hash+"&"+dn+"&"+tr
+
+def sizeof_fmt(num, suffix='B'):
+    try:
+        num=int(num)
+        for unit in ['','Ki','Mi','Gi','Ti','Pi','Ei','Zi']:
+            if abs(num) < 1024.0:
+               return "%3.1f%s%s" % (num, unit, suffix)
+            num /= 1024.0
+        return "%.1f%s%s" % (num, 'Yi', suffix)
+    except:
+        return num
+
+
 def piratebay(term):
-    global name,link
-#   term=term.replace(' ','+')
-    pblnk="https://ahoythepirate.in"
+    global data
+    base_link="https://beaindia.org"
     print('\n\n[i] Please Wait Searching Data...')
-    term=urllib.parse.quote_plus(term.strip())
-    site=pblnk+"/s/?q="+term+"&page=&orderby="
-    np=0
-    #site="https://indiaboat.art/s/?q=Sacred+games&page=&orderby="
-    while True:
-        print("\n\n[i] Fetching Data...\n\n")
-        req = urllib.request.Request(site, headers=hdr)
-        try:
-            page = urllib.request.urlopen(req)
-        except:
-            print('[-] Connection Error')
-        page=page.read().decode('utf-8')
-        det=page.split('<div class="detName">')[1:]
-        name=[]
-        link=[]
-        seed=[]
-        info=[]
-        for dt in det:
-            tmp=dt[dt.find('href="')+6:dt.find('" class')]
-            link.append(pblnk+tmp)
-            tmp=dt[dt.find('">',dt.find('detLink')+10)+2:dt.find('</a>')]
-            name.append(tmp)
-            tmp=dt[dt.find('detDesc">')+9:dt.find('ULed')]
-            info.append(tmp)
-            tmp=dt[dt.find('align="right">')+14:dt.find('</td>',dt.find('align="right">')+13)]
-            seed.append(tmp)
-        for i in range(len(link)):
-            print(f'''[ {i+1} ] TORRENT NUMBER #{i+1} ''')
-            print('\tName: ',name[i])
-            #print('\tLink: ',link[i])
-            print('\tSeed: ',seed[i])
-            print('\tInfo: ',info[i])
+    
+    url = base_link+"/apibay/q.php?q="+term
+    cookies = {"__cfduid": "dfa53d7227d2614eca69ee49261e0958e1596182467", "_ga": "GA1.2.1067275401.1596182469", "_gid": "GA1.2.2013677734.1596182469", "ppu_main_b1f57639c83dbef948eefa8b64183e1e": "1", "sb_main_740b003479a7eba76fd37c6ed9b4e91a": "1", "dom3ic8zudi28v8lr6fgphwffqoz0j6c": "5b26a583-ce6b-49fb-b679-fdf4d45980a9%3A1%3A2", "494668b4c0ef4d25bda4e75c27de2817": "5b26a583-ce6b-49fb-b679-fdf4d45980a9:1:2", "sb_count_740b003479a7eba76fd37c6ed9b4e91a": "2", "ppu_sub_b1f57639c83dbef948eefa8b64183e1e": "4"}
+    headers = {"Connection": "close", "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36", "Accept": "*/*", "Sec-Fetch-Site": "same-origin", "Sec-Fetch-Mode": "cors", "Sec-Fetch-Dest": "empty", "Referer": base_link+"/search.php?q=saf", "Accept-Encoding": "gzip, deflate", "Accept-Language": "en-US,en;q=0.9"}
+    data = requests.get(url, headers=headers, cookies=cookies).json()
+    
+    RESULTS_PER_LOAD=10
+    ndata=[ data[i:i + RESULTS_PER_LOAD ] for i in range(0, len(data), RESULTS_PER_LOAD)]
+    for i,x in enumerate(ndata):
+        for j,dt in enumerate(x):
+            tn=i*RESULTS_PER_LOAD+j+1
+            print(f'''[ {tn} ] TORRENT NUMBER #{tn} ''')
+            print('\tName: ',dt.get('name','undefined'))
+            print("\tSeeders | Leechers: ",dt.get("seeders",'undefined')+" | "+dt.get("leechers",'undefined'))
+            print("\tSize: ",sizeof_fmt(dt.get("size","undefined")))
+            print("\tStatus: ",dt.get("status","undefined"))
             print('\n')
-        cho=input('\n\n\n[!] Load More (Y/N) : ')
+        cho=input('\n\n\n[!] Load More(Y/N) : ')
         if cho.lower().strip()=='y':
-            np+=1
-            site=pblnk+"/s/?q="+term+"&page="+str(np)+"&orderby="
+            continue
         else:
             break
 
 def torrentz(term):
     global name,link
-    pblnk="https://torrentz2eu.in"
+    pblnk="https://utorrentz2.in"
     print('\n\n[i] Please Wait Searching Data...')
     term=urllib.parse.quote_plus(term.strip())
-    site=pblnk+"/?q="+term
+    site=pblnk+"/search.php?q="+term
     np=0
     #site="https://torrentz2eu.in/?q=sacred+games"
     req = urllib.request.Request(site, headers=hdr)
@@ -157,7 +154,7 @@ if len(sys.argv)==2:
     sys.exit()
 print("[i] Search Engines Available: 2\n")
 print('\t[1]\tPirateBay')
-print('\t[2]\tTorrentz')
+print('\t[2]\tTorrentz [ Out of service ]')
 print('\n\n')
 se=''
 
@@ -173,29 +170,37 @@ elif "2" in cho:
 else:
     print('[-] Wrong Input.. \n\n[i]Using PirateBay By default')
     piratebay(term)
-if len(link)==0:
-    print("Sorry No Links Found...\nExiting Termux")
+if len(data)==0:
+    print("Sorry No Links Found...\nExiting...")
     exit()
 try:
-    inp=int(input("Enter Link Number: "))
+    inp=int(input("Enter Torrent Number: "))
 except:
     print('Exiting TorrGrab')
-    exit()
-name=name[inp-1]
-magnet=scrapmagnet(link[inp-1],se)
-hash=magnet[magnet.find('btih:')+5:magnet.find('&')]
+    sys.exit()
+
+torrent=data[inp-1]
+
+name=torrent.get("name")
+hash=torrent['info_hash']
+magnet=scrapmagnet(hash,name)
 fn=name.replace(" ","_")+".torrent"
 
 print("[i] Files will be Downloaded by default torrent app on your System\n\n")
-print("\n\n\n[i] Title: ",name)
-print("[i] Magnet Link: ",magnet)
-print("[i] Info Hash: ",hash)
+print('[i] Name: ',name)
+print("[i] Seeders | Leechers: ",torrent.get("seeders",'undefined')+" | "+torrent.get("leechers",'undefined'))
+print("[i] Size: ",sizeof_fmt(torrent.get("size","undefined")))
+print("[i] Status: ",torrent.get("status","undefined"))
+print("[i] Hash: ",hash)
+print("[i] Total Files: ",torrent.get("num_files","undefined"))
+print("[i] Magnet: ",magnet)
+
 print('\n\n Fetching .torrent File From Magnet Link...')
 res=mag2tor(fn,hash)
 
 if not res:
     print('[i] Exiting TorrGrab..')
-    exit()
+    sys.exit()
 
 
 cho=input('\n\n\n[i] Start Download (Y/N) : ')
